@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rastreador de Leilões - Web Scraper</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Fonte do Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!--
+  ============================================================
+  RASTREADOR DE TRATORES - FRONTEND
+  ============================================================
+  
+  Deploy: Netlify (ou qualquer serviço de hospedagem estática)
+  
+  INSTRUÇÕES DE DEPLOY NA NETLIFY:
+  1. Crie uma conta em https://netlify.com
+  2. Arraste esta pasta (rastreador-tratores-frontend) para a área 
+     de deploy na dashboard, OU
+  3. Conecte seu repositório GitHub/GitLab
+  4. Configure:
+     - Build command: (deixe em branco - é estático)
+     - Publish directory: (raiz do projeto)
+  5. Clique em "Deploy site"
+  
+  CONECTANDO COM O BACKEND:
+  1. Edite o arquivo script.js
+  2. Altere a constante API_URL no topo do arquivo:
+     - Para testes locais: "http://localhost:3000"
+     - Para produção: "https://seu-app.onrender.com" (sua URL do Render)
+  
+  ============================================================
+  -->
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🚜</span>
+        <h1>Rastreador de Leilões</h1>
+      </div>
+      <p class="subtitle">Web Scraper para sites de leilão</p>
+    </header>
+
+    <!-- Status do Servidor -->
+    <div id="server-status" class="server-status checking">
+      <span class="status-dot"></span>
+      <span class="status-text">Verificando conexão com servidor...</span>
+    </div>
+
+    <!-- Formulário Principal -->
+    <main class="main-content">
+      <form id="scrape-form" class="scrape-form">
+        
+        <!-- Seção 1: Upload de Sites -->
+        <section class="form-section">
+          <h2>
+            <span class="section-number">1</span>
+            Lista de Sites
+          </h2>
+          <div class="file-upload">
+            <label for="sites-file" class="file-label">
+              <span class="file-icon">📁</span>
+              <span class="file-text">Clique para selecionar arquivo .txt</span>
+              <span class="file-hint">ou arraste o arquivo aqui</span>
+            </label>
+            <input 
+              type="file" 
+              id="sites-file" 
+              name="sites-file" 
+              accept=".txt"
+              class="file-input"
+            >
+          </div>
+          <div id="file-info" class="file-info hidden">
+            <span class="file-name"></span>
+            <span class="file-count"></span>
+            <button type="button" id="remove-file" class="btn-remove" title="Remover arquivo">×</button>
+          </div>
+          <div class="or-divider">
+            <span>ou</span>
+          </div>
+          <textarea 
+            id="sites-textarea" 
+            class="sites-textarea" 
+            placeholder="Cole as URLs aqui (uma por linha)...&#10;&#10;Exemplo:&#10;https://www.kronleiloes.com.br&#10;https://www.centraldosleiloes.com.br"
+            rows="6"
+          ></textarea>
+        </section>
+
+        <!-- Seção 2: Palavras-chave -->
+        <section class="form-section">
+          <h2>
+            <span class="section-number">2</span>
+            Palavras-chave
+          </h2>
+          <div class="keywords-container">
+            <div class="keywords-input-group">
+              <input 
+                type="text" 
+                id="keyword-input" 
+                class="keyword-input" 
+                placeholder="Digite uma palavra-chave e pressione Enter"
+              >
+              <button type="button" id="add-keyword" class="btn-add">+</button>
+            </div>
+            <div id="keywords-list" class="keywords-list">
+              <!-- Palavras-chave padrão serão inseridas via JS -->
+            </div>
+            <p class="keywords-hint">
+              Palavras-chave padrão já incluídas. Adicione mais conforme necessário.
+            </p>
+          </div>
+        </section>
+
+        <!-- Seção 3: Configurações Avançadas -->
+        <section class="form-section collapsible">
+          <h2 class="collapsible-header">
+            <span class="section-number">3</span>
+            Configurações Avançadas
+            <span class="toggle-icon">▼</span>
+          </h2>
+          <div class="collapsible-content">
+            <div class="config-grid">
+              <div class="config-item">
+                <label for="negativos-fortes">Negativos Fortes (bloqueia sempre):</label>
+                <textarea 
+                  id="negativos-fortes" 
+                  class="config-textarea" 
+                  rows="3"
+                  placeholder="scania, iveco, onibus, bus..."
+                ></textarea>
+              </div>
+              <div class="config-item">
+                <label for="negativos-fracos">Negativos Fracos (contextuais):</label>
+                <textarea 
+                  id="negativos-fracos" 
+                  class="config-textarea" 
+                  rows="3"
+                  placeholder="caminhão, truck, pneus..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Botão de Iniciar -->
+        <button type="submit" id="btn-scrape" class="btn-primary" disabled>
+          <span class="btn-icon">🔍</span>
+          <span class="btn-text">Iniciar Busca</span>
+        </button>
+      </form>
+
+      <!-- Barra de Progresso -->
+      <div id="progress-container" class="progress-container hidden">
+        <div class="progress-header">
+          <span class="progress-title">Processando sites...</span>
+          <span id="progress-percent" class="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="progress-stats">
+          <span id="progress-current">0</span> / <span id="progress-total">0</span> sites
+        </div>
+        <div id="progress-log" class="progress-log"></div>
+        <button type="button" id="btn-cancel" class="btn-cancel">Cancelar</button>
+      </div>
+
+      <!-- Resultados -->
+      <div id="results-container" class="results-container hidden">
+        <div class="results-header">
+          <h2>
+            <span class="results-icon">📊</span>
+            Resultados
+          </h2>
+          <div class="results-actions">
+            <span id="results-count" class="results-count">0 oportunidades encontradas</span>
+            <button type="button" id="btn-download" class="btn-secondary">
+              <span class="btn-icon">📥</span>
+              Baixar CSV
+            </button>
+            <button type="button" id="btn-new-search" class="btn-tertiary">
+              <span class="btn-icon">🔄</span>
+              Nova Busca
+            </button>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table id="results-table" class="results-table">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Termos Encontrados</th>
+                <th>Descrição</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody">
+              <!-- Resultados serão inseridos aqui -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div id="no-results" class="no-results hidden">
+          <span class="no-results-icon">🔍</span>
+          <p>Nenhuma oportunidade encontrada.</p>
+          <p class="no-results-hint">Tente ajustar as palavras-chave ou verificar se os sites estão acessíveis.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Baseado no rastreador_tratores_v6.py | Node.js + Express Backend</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
